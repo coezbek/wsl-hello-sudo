@@ -14,7 +14,6 @@ use std::process::{Command, Stdio};
 use std::ptr;
 use toml;
 use toml::Value;
-use uuid::Uuid;
 
 #[no_mangle]
 pub extern "C" fn pam_sm_authenticate(
@@ -200,7 +199,10 @@ fn authenticate_via_hello(pamh: *mut pam_handle_t) -> Result<i32, HelloAuthentic
     let hello_public_key = PKey::public_key_from_pem(key_str.as_bytes())
         .map_err(HelloAuthenticationError::InvalidPublicKey)?;
 
-    let challenge = format!("pam_wsl_hello:{}:{}", user_name, Uuid::new_v4());
+    let mut nonce = [0u8; 16];
+    openssl::rand::rand_bytes(&mut nonce).map_err(HelloAuthenticationError::OpenSslError)?;
+    let nonce_hex: String = nonce.iter().map(|b| format!("{:02x}", b)).collect();
+    let challenge = format!("pam_wsl_hello:{}:{}", user_name, nonce_hex);
 
     let auth_res;
     let challenge_tmpfile_path = &format!("/tmp/{}", challenge);

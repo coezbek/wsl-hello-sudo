@@ -12,8 +12,6 @@ use std::io::{self, prelude::*, SeekFrom};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::ptr;
-use toml;
-use toml::Value;
 
 #[no_mangle]
 pub extern "C" fn pam_sm_authenticate(
@@ -67,7 +65,6 @@ fn get_user(pamh: *mut pam_handle_t, prompt: Option<&str>) -> Result<Cow<'_, str
 #[allow(dead_code)]
 enum ConfigError {
     Io(io::Error),
-    Toml(toml::de::Error),
     MissingField(String),
     InvalidValueType(String),
 }
@@ -78,17 +75,10 @@ impl From<io::Error> for ConfigError {
     }
 }
 
-impl From<toml::de::Error> for ConfigError {
-    fn from(err: toml::de::Error) -> ConfigError {
-        ConfigError::Toml(err)
-    }
-}
-
 impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ConfigError::Io(ref ioerr) => write!(f, "{}", ioerr),
-            ConfigError::Toml(_) => write!(f, "TOML format error"),
             ConfigError::MissingField(ref field) => write!(f, "field: '{}' is not found", field),
             ConfigError::InvalidValueType(ref field) => {
                 write!(f, "field: '{}' has an invalid value type", field)
@@ -97,32 +87,44 @@ impl fmt::Display for ConfigError {
     }
 }
 
-fn get_authenticator_path() -> Result<String, ConfigError> {
+/// Reads `key = "value"` from /etc/pam_wsl_hello/config.
+/// The file holds only such lines; blank lines and `#` comments are skipped.
+/// Values are plain strings without escapes.
+fn get_config_value(key: &str) -> Result<String, ConfigError> {
     let mut config_file = File::open("/etc/pam_wsl_hello/config")?;
     let mut config = String::new();
     config_file.read_to_string(&mut config)?;
+    parse_config_value(&config, key)
+}
 
-    let config_value = config.parse::<Value>()?;
-    let authenticator_path = config_value
-        .get("authenticator_path")
-        .ok_or_else(|| ConfigError::MissingField("authenticator_path".to_owned()))?
-        .as_str()
-        .ok_or_else(|| ConfigError::InvalidValueType("authenticator_path".to_owned()))?;
-    Ok(authenticator_path.to_owned())
+fn parse_config_value(config: &str, key: &str) -> Result<String, ConfigError> {
+    for line in config.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let (k, v) = match line.split_once('=') {
+            Some(kv) => kv,
+            None => continue,
+        };
+        if k.trim() != key {
+            continue;
+        }
+        let v = v.trim();
+        return match v.strip_prefix('"').and_then(|v| v.strip_suffix('"')) {
+            Some(inner) if !inner.contains('"') && !inner.contains('\\') => Ok(inner.to_owned()),
+            _ => Err(ConfigError::InvalidValueType(key.to_owned())),
+        };
+    }
+    Err(ConfigError::MissingField(key.to_owned()))
+}
+
+fn get_authenticator_path() -> Result<String, ConfigError> {
+    get_config_value("authenticator_path")
 }
 
 fn get_win_mnt() -> Result<String, ConfigError> {
-    let mut config_file = File::open("/etc/pam_wsl_hello/config")?;
-    let mut config = String::new();
-    config_file.read_to_string(&mut config)?;
-
-    let config_value = config.parse::<Value>()?;
-    let win_mnt = config_value
-        .get("win_mnt")
-        .ok_or_else(|| ConfigError::MissingField("win_mnt".to_owned()))?
-        .as_str()
-        .ok_or_else(|| ConfigError::InvalidValueType("win_mnt".to_owned()))?;
-    Ok(win_mnt.to_owned())
+    get_config_value("win_mnt")
 }
 
 #[derive(Debug)]
@@ -258,5 +260,47 @@ fn authenticate_via_hello(pamh: *mut pam_handle_t) -> Result<i32, HelloAuthentic
     {
         true => Ok(PAM_SUCCESS),
         false => Err(HelloAuthenticationError::SignAuthenticationFail),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const CONFIG: &str = "authenticator_path = \"/mnt/c/Users/me/wsl-hello-sudo/WindowsHelloBridge.exe\"\n\
+                          # comment\n\
+                          \n\
+                          win_mnt = \"/mnt/c\"\n";
+
+    #[test]
+    fn reads_both_keys() {
+        assert_eq!(
+            parse_config_value(CONFIG, "authenticator_path").unwrap(),
+            "/mnt/c/Users/me/wsl-hello-sudo/WindowsHelloBridge.exe"
+        );
+        assert_eq!(parse_config_value(CONFIG, "win_mnt").unwrap(), "/mnt/c");
+    }
+
+    #[test]
+    fn missing_key_is_an_error() {
+        assert!(matches!(
+            parse_config_value(CONFIG, "nope"),
+            Err(ConfigError::MissingField(_))
+        ));
+    }
+
+    #[test]
+    fn unquoted_or_escaped_values_are_rejected() {
+        for bad in ["win_mnt = /mnt/c", "win_mnt = \"/mnt/c", "win_mnt = \"a\\\\b\"", "win_mnt = \"a\"b\""] {
+            assert!(
+                matches!(parse_config_value(bad, "win_mnt"), Err(ConfigError::InvalidValueType(_))),
+                "{}", bad
+            );
+        }
+    }
+
+    #[test]
+    fn key_must_match_exactly() {
+        assert!(parse_config_value("win_mnt_x = \"/x\"", "win_mnt").is_err());
     }
 }

@@ -4,7 +4,6 @@
 
 extern crate libc;
 extern crate openssl;
-extern crate toml;
 
 pub mod auth;
 pub mod bindings;

@@ -134,7 +134,7 @@ fn bindgen_test_layout_pam_message() {
         concat!("Alignment of ", stringify!(pam_message))
     );
     assert_eq!(
-        unsafe { &(*(0 as *const pam_message)).msg_style as *const _ as usize },
+        ::std::mem::offset_of!(pam_message, msg_style),
         0usize,
         concat!(
             "Alignment of field: ",
@@ -144,7 +144,7 @@ fn bindgen_test_layout_pam_message() {
         )
     );
     assert_eq!(
-        unsafe { &(*(0 as *const pam_message)).msg as *const _ as usize },
+        ::std::mem::offset_of!(pam_message, msg),
         8usize,
         concat!(
             "Alignment of field: ",
@@ -178,7 +178,7 @@ fn bindgen_test_layout_pam_response() {
         concat!("Alignment of ", stringify!(pam_response))
     );
     assert_eq!(
-        unsafe { &(*(0 as *const pam_response)).resp as *const _ as usize },
+        ::std::mem::offset_of!(pam_response, resp),
         0usize,
         concat!(
             "Alignment of field: ",
@@ -188,7 +188,7 @@ fn bindgen_test_layout_pam_response() {
         )
     );
     assert_eq!(
-        unsafe { &(*(0 as *const pam_response)).resp_retcode as *const _ as usize },
+        ::std::mem::offset_of!(pam_response, resp_retcode),
         8usize,
         concat!(
             "Alignment of field: ",
@@ -229,7 +229,7 @@ fn bindgen_test_layout_pam_conv() {
         concat!("Alignment of ", stringify!(pam_conv))
     );
     assert_eq!(
-        unsafe { &(*(0 as *const pam_conv)).conv as *const _ as usize },
+        ::std::mem::offset_of!(pam_conv, conv),
         0usize,
         concat!(
             "Alignment of field: ",
@@ -239,7 +239,7 @@ fn bindgen_test_layout_pam_conv() {
         )
     );
     assert_eq!(
-        unsafe { &(*(0 as *const pam_conv)).appdata_ptr as *const _ as usize },
+        ::std::mem::offset_of!(pam_conv, appdata_ptr),
         8usize,
         concat!(
             "Alignment of field: ",
@@ -277,7 +277,7 @@ fn bindgen_test_layout_pam_xauth_data() {
         concat!("Alignment of ", stringify!(pam_xauth_data))
     );
     assert_eq!(
-        unsafe { &(*(0 as *const pam_xauth_data)).namelen as *const _ as usize },
+        ::std::mem::offset_of!(pam_xauth_data, namelen),
         0usize,
         concat!(
             "Alignment of field: ",
@@ -287,7 +287,7 @@ fn bindgen_test_layout_pam_xauth_data() {
         )
     );
     assert_eq!(
-        unsafe { &(*(0 as *const pam_xauth_data)).name as *const _ as usize },
+        ::std::mem::offset_of!(pam_xauth_data, name),
         8usize,
         concat!(
             "Alignment of field: ",
@@ -297,7 +297,7 @@ fn bindgen_test_layout_pam_xauth_data() {
         )
     );
     assert_eq!(
-        unsafe { &(*(0 as *const pam_xauth_data)).datalen as *const _ as usize },
+        ::std::mem::offset_of!(pam_xauth_data, datalen),
         16usize,
         concat!(
             "Alignment of field: ",
@@ -307,7 +307,7 @@ fn bindgen_test_layout_pam_xauth_data() {
         )
     );
     assert_eq!(
-        unsafe { &(*(0 as *const pam_xauth_data)).data as *const _ as usize },
+        ::std::mem::offset_of!(pam_xauth_data, data),
         24usize,
         concat!(
             "Alignment of field: ",

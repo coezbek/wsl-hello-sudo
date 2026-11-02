@@ -2,6 +2,7 @@
 
 mod authenticator;
 mod creator;
+mod face_default;
 
 mod error;
 pub(crate) use error::FailureReason;

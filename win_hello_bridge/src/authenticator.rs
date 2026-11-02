@@ -25,6 +25,8 @@ pub(crate) fn verify_user(key_name: &str, data_to_sign: &[u8]) -> Result<Vec<u8>
 
     let data = CryptographicBuffer::CreateFromByteArray(data_to_sign)?;
 
+    crate::face_default::ensure_face_default();
+
     let hello_focus = focus_hello_window();
 
     let result = key.RequestSignAsync(&data)?.get()?;

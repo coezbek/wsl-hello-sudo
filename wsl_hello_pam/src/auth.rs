@@ -17,7 +17,7 @@ use toml::Value;
 use uuid::Uuid;
 
 #[no_mangle]
-pub fn pam_sm_authenticate(
+pub extern "C" fn pam_sm_authenticate(
     pamh: *mut pam_handle_t,
     flags: c_int,
     _: c_int,
